@@ -29,7 +29,46 @@
     "use strict";
     var debug = true,
         self = this,
-        $$logger;
+        $$logger,
+        ArrayProto = Array.prototype,
+        nativeForEach = ArrayProto.forEach,
+        slice = ArrayProto.slice,
+        breaker = {};
+
+
+    // The cornerstone, an `each` implementation, aka `forEach`.
+    // Handles objects with the built-in `forEach`, arrays, and raw objects.
+    // Delegates to **ECMAScript 5**'s native `forEach` if available.
+    var each = function(obj, iterator, context) {
+        if (obj == null) return;
+        if (nativeForEach && obj.forEach === nativeForEach) {
+            obj.forEach(iterator, context);
+        } else if (obj.length === +obj.length) {
+            for (var i = 0, l = obj.length; i < l; i++) {
+                if (iterator.call(context, obj[i], i, obj) === breaker) return;
+            }
+        } else {
+            for (var key in obj) {
+                if (obj.hasOwnProperty(key)) {
+                    if (iterator.call(context, obj[key], key, obj) === breaker) return;
+                }
+            }
+        }
+    };
+
+    // Extend a given object with all the properties in passed-in object(s).
+    var extend = function(obj) {
+        each(slice.call(arguments, 1), function(source) {
+            if (source) {
+                for (var prop in source) {
+                    if(source.hasOwnProperty(prop)){
+                        obj[prop] = source[prop];
+                    }
+                }
+            }
+        });
+        return obj;
+    };
 
     function formatError(arg) {
         if (arg instanceof Error) {
@@ -51,7 +90,7 @@
         if (logFn.apply) {
             return function () {
                 var args = [];
-                _.forEach(arguments, function (arg) {
+                each(arguments, function (arg) {
                     args.push(formatError(arg));
                 });
                 return logFn.apply(console, args);
@@ -138,13 +177,13 @@
     };
 
     // override the current logger
-    _.extend(window, $$logger);
+    extend(window, $$logger);
 
     // added a simple method to allow the injection of the logger into your framework
-    _.extend(window, {
+    extend(window, {
         injectLogger: function (obj) {
             if (obj !== undefined || obj !== null) {
-                _.extend(obj, $$logger);
+                extend(obj, $$logger);
             }
         },
         appendLogger: function () {
