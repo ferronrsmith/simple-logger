@@ -33,35 +33,46 @@
         ArrayProto = Array.prototype,
         nativeForEach = ArrayProto.forEach,
         slice = ArrayProto.slice,
-        breaker = {};
+        breaker = {},
+        each,
+        extend;
 
 
     // The cornerstone, an `each` implementation, aka `forEach`.
     // Handles objects with the built-in `forEach`, arrays, and raw objects.
     // Delegates to **ECMAScript 5**'s native `forEach` if available.
-    var each = function(obj, iterator, context) {
-        if (obj == null) return;
+    each = function (obj, iterator, context) {
+        var i, key, l;
+        if (obj === null) {
+            return;
+        }
         if (nativeForEach && obj.forEach === nativeForEach) {
             obj.forEach(iterator, context);
         } else if (obj.length === +obj.length) {
-            for (var i = 0, l = obj.length; i < l; i++) {
-                if (iterator.call(context, obj[i], i, obj) === breaker) return;
+            l = obj.length;
+            for (i = 0; i < l; i += 1) {
+                if (iterator.call(context, obj[i], i, obj) === breaker) {
+                    return;
+                }
             }
         } else {
-            for (var key in obj) {
+            for (key in obj) {
                 if (obj.hasOwnProperty(key)) {
-                    if (iterator.call(context, obj[key], key, obj) === breaker) return;
+                    if (iterator.call(context, obj[key], key, obj) === breaker) {
+                        return;
+                    }
                 }
             }
         }
     };
 
     // Extend a given object with all the properties in passed-in object(s).
-    var extend = function(obj) {
-        each(slice.call(arguments, 1), function(source) {
+    extend = function (obj) {
+        each(slice.call(arguments, 1), function (source) {
+            var prop;
             if (source) {
-                for (var prop in source) {
-                    if(source.hasOwnProperty(prop)){
+                for (prop in source) {
+                    if (source.hasOwnProperty(prop)) {
                         obj[prop] = source[prop];
                     }
                 }
